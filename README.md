@@ -5,7 +5,7 @@ The library uses the excelent [Trinamic-library](https://github.com/terjeio/Trin
 
 # Supported Drivers (as of now)
 
-TMC2209
+-TMC2209
 
 # Usage
 
@@ -18,9 +18,9 @@ To build example code, open the example folder in VS Code. This example code dem
 
 # To Do
 
-Although the funcionts and variable are relatively self explanatory, one of the goals is to create or generate proper documentation. The Trinamic-Library is not commented or documented.
-Add support for TMC2130
-Add Support for TMC5160
+-Although the funcionts and variable are relatively self explanatory, one of the goals is to create or generate proper documentation. The Trinamic-Library is not commented or documented.
+-Add support for TMC2130
+-Add Support for TMC5160
 
 # Disclaimer
 
