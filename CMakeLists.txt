@@ -20,3 +20,5 @@ target_link_libraries(pico_trinamic INTERFACE
         #trinamic
         hardware_uart
         )
+
+

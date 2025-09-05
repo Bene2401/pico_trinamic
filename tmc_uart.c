@@ -26,65 +26,63 @@
 static uart_inst_t * tmc_uart;
 
 
-TMC_uart_write_datagram_t *tmc_uart_read(trinamic_motor_t driver, TMC_uart_read_datagram_t *dgr)
+TMC_uart_write_datagram_t *tmc_uart_read(trinamic_motor_t motor, TMC_uart_read_datagram_t *datagram)
 {
-    static TMC_uart_write_datagram_t wdgr = {0};
-    uint8_t buffer[8] = {0};
-    absolute_time_t start;
-    int count = 0;
+    static TMC_uart_write_datagram_t rx_buffer;
+    static uart_inst_t *last_uart = NULL;
+    static uint last_baud = 0;
 
-    // 1. RX-FIFO vorher leeren
-    while (uart_is_readable(tmc_uart)) {
-        uart_getc(tmc_uart);
+    // UART nur initialisieren, wenn sich UART oder Baudrate geändert hat
+    if (last_uart != motor.UARTID || last_baud != motor.UART_BAUD)
+    {
+        tmc_uart_init(motor.UARTID, motor.UART_BAUD);
+        last_uart = motor.UARTID;
+        last_baud = motor.UART_BAUD;
     }
 
-    // 2. Telegramm senden
-    uart_write_blocking(tmc_uart, dgr->data, sizeof(TMC_uart_write_datagram_t));
-    uart_tx_wait_blocking(tmc_uart);
-
-    // 3. Echo prüfen und nur die gesendeten Bytes verwerfen
-    while (uart_is_readable(tmc_uart) && count < sizeof(TMC_uart_write_datagram_t)) {
-        uint8_t b = uart_getc(tmc_uart);
-        if (b != dgr->data[count]) {
-            // Antwort fängt hier an
-            buffer[0] = b;
-            count = 1;
-            break;
-        }
-        count++;
+    // Datagram senden
+    for (int i = 0; i < sizeof(TMC_uart_read_datagram_t); i++)
+    {
+        uart_putc_raw(motor.UARTID, datagram->data[i]);
     }
 
-    // 4. Rest der Antwort einlesen (Byte-für-Byte)
-    start = get_absolute_time();
-    while (count < 8) {
-        if (uart_is_readable(tmc_uart)) {
-            buffer[count++] = uart_getc(tmc_uart);
-        }
-        // Timeout 10 ms
-        if (to_ms_since_boot(get_absolute_time()) - to_ms_since_boot(start) > 10) {
-            wdgr.msg.addr.value = 0xFE; // Timeout
-            return &wdgr;
-        }
+    // Antwort empfangen (8 Bytes für TMC2209)
+    for (int i = 0; i < 8; i++)
+    {
+        rx_buffer.data[i] = uart_getc(motor.UARTID);
     }
 
-    // 5. Bytes ins Rückgabe-Datagramm kopieren
-    for (int i = 0; i < 8; i++) {
-        wdgr.data[i] = buffer[i];
-    }
-
-    return &wdgr;
+    return &rx_buffer;
 }
 
 
-void tmc_uart_write (trinamic_motor_t driver, TMC_uart_write_datagram_t *dgr)
+
+
+void tmc_uart_write(trinamic_motor_t motor, TMC_uart_write_datagram_t *datagram)
 {
-    
-    uart_write_blocking(tmc_uart, dgr->data, sizeof(TMC_uart_write_datagram_t));
-    uart_tx_wait_blocking(tmc_uart);
+    static uart_inst_t *last_uart = NULL;
+    static uint last_baud = 0;
+
+    // UART nur initialisieren, wenn sich UART oder Baudrate geändert hat
+    if (last_uart != motor.UARTID || last_baud != motor.UART_BAUD)
+    {
+        tmc_uart_init(motor.UARTID, motor.UART_BAUD);
+        last_uart = motor.UARTID;
+        last_baud = motor.UART_BAUD;
+    }
+
+    for (int i = 0; i < sizeof(TMC_uart_write_datagram_t); i++)
+    {
+        uart_putc_raw(motor.UARTID, datagram->data[i]);
+    }
+
+    // Optional: kleine Pause
+    sleep_ms(1);
 }
+
 
 void tmc_uart_init (uart_inst_t * uart, uint baudrate)
 {   
     uart_init(uart, baudrate);
-    tmc_uart = uart;
+    //tmc_uart = uart;
 }
